@@ -96,6 +96,10 @@ must compare the received tag and release plaintext only after successful
 authentication. This repository does not include a bus or processor; those
 interfaces belong to a later SoC integration stage.
 
-Future Work: SoC Integration
-The next phase will integrate the AEAD core with a PicoRV32 RISC-V processor through a memory-mapped interface. The SoC will include ROM, RAM, an interconnect, and the peripherals needed for the target application, such as UART, SPI, GPIO, and a timer. Firmware will configure the key, nonce, AAD, and payload, start an operation, and read its status and results.
-The integration logic must compare the computed MAC with the received tag and prevent unauthenticated plaintext from being accepted. After system-level simulation and verification, the complete SoC will be synthesized to evaluate area and timing before moving to ASIC physical design.
+## Future Work: SoC Integration
+
+- **Processor:** Integrate the AEAD core with a PicoRV32 RISC-V processor.
+- **Interconnect and memory:** Add a memory-mapped interface, ROM, and RAM.
+- **Peripherals:** Add UART, SPI, GPIO, and a timer as required by the target application.
+- **Security:** Compare the received tag with the computed MAC before accepting plaintext.
+- **Verification:** Test the complete SoC and evaluate its area and timing before ASIC physical design.
