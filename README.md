@@ -3,7 +3,7 @@
 A Verilog implementation of the ChaCha20-Poly1305 AEAD core intended for
 integration into a RISC-V microcontroller system. This repository contains
 only the **AEAD RTL, basic testbenches, and Quartus projects**. It does not
-include a CPU, bus, SoC, GUI, or UVM environment.
+include a CPU, bus, SoC.
 
 ## Repository layout
 
