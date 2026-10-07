@@ -1,91 +1,97 @@
-# ChaCha20–Poly1305 AEAD RTL
+# ChaCha20-Poly1305 AEAD RTL
 
-Lõi phần cứng AEAD ChaCha20–Poly1305 viết bằng Verilog, hướng tới tích hợp
-vào hệ thống vi điều khiển RISC-V. Repository này chỉ chứa **RTL của lõi,
-testbench cơ bản và project Quartus**. Không có CPU, bus, SoC, GUI hoặc UVM.
+A Verilog implementation of the ChaCha20-Poly1305 AEAD core intended for
+integration into a RISC-V microcontroller system. This repository contains
+only the **AEAD RTL, basic testbenches, and Quartus projects**. It does not
+include a CPU, bus, SoC, GUI, or UVM environment.
 
-## Cấu trúc repository
+## Repository layout
 
 ```text
 rtl/
-  aead_chacha20_poly1305.v   Top của lõi AEAD
-  chacha20_core.v            Lõi ChaCha20
-  poly1305_core.v            Lõi Poly1305
+  aead_chacha20_poly1305.v   AEAD core top level
+  chacha20_core.v            ChaCha20 core
+  poly1305_core.v            Poly1305 core
 testbench/
-  tb_aead_core_gui.v         Testbench AEAD trực tiếp, in ciphertext và MAC
-  aead_test_vector.txt       Vector đầu vào mẫu cho testbench AEAD
-  run_aead_smoke.do          Script biên dịch và chạy mẫu trên ModelSim/Questa
-  tb_chacha20_core_kat.v     Known-answer test cho ChaCha20
-  tb_poly1305_arithmetic.v  Kiểm tra phép toán Poly1305 với mô hình số nguyên
+  tb_aead_core_gui.v         Direct AEAD testbench; prints ciphertext and MAC
+  aead_test_vector.txt       Sample AEAD input vector
+  run_aead_smoke.do          ModelSim/Questa compile and simulation script
+  tb_chacha20_core_kat.v     ChaCha20 known-answer test
+  tb_poly1305_arithmetic.v  Poly1305 wide-integer arithmetic reference test
 quartus/
-  aead_core/                Project tổng hợp top AEAD thuần
-  aead_fit_harness/         Project fit/timing với giao tiếp nạp/đọc 32-bit
+  aead_core/                Pure AEAD top-level synthesis project
+  aead_fit_harness/         Fitter/timing project with a 32-bit load/read port
 ```
 
-## Chạy mô phỏng AEAD
+## Run the AEAD simulation
 
-Cần ModelSim hoặc QuestaSim. Trong terminal, chuyển vào thư mục `testbench` và
-chạy:
+ModelSim or QuestaSim is required. Open a terminal in the `testbench`
+directory and run:
 
 ```powershell
 cd testbench
 vsim -c -do "do run_aead_smoke.do"
 ```
 
-Nếu `vsim` chưa nằm trong `PATH`, dùng đường dẫn đầy đủ tới `vsim.exe` đã
-cài trên máy. Script biên dịch ba file RTL, chạy `tb_aead_core_gui` với
-`aead_test_vector.txt`, rồi in các dòng `Ciphertext:`, `MAC:` và số chu kỳ.
-Vector mẫu chứa thông điệp **150 byte** và AAD **35 byte**. Với RTL hiện tại,
-MAC mẫu là `325aa3bec68dd442d9ad28939a3f19df`.
+If `vsim` is not on your `PATH`, use the full path to the installed
+`vsim.exe`. The script compiles the three RTL files, runs
+`tb_aead_core_gui` with `aead_test_vector.txt`, and prints `Ciphertext:`,
+`MAC:`, and the cycle count. The sample vector contains a **150-byte
+message** and **35 bytes of AAD**. With the current RTL, its MAC is
+`325aa3bec68dd442d9ad28939a3f19df`.
 
-Testbench AEAD này **in kết quả**; nó chưa tự so ciphertext/MAC với oracle.
-Hai testbench còn lại kiểm tra riêng ChaCha20 bằng vector RFC 8439 và phép
-toán Poly1305. Khi dùng một vector mới, cần tự so ciphertext/MAC với phần
-mềm tham chiếu trước khi kết luận đúng chức năng.
+This AEAD testbench **prints the result** but does not automatically compare
+the ciphertext and MAC against a reference implementation. The other two
+testbenches check ChaCha20 against an RFC 8439 known-answer vector and
+Poly1305 against a wide-integer arithmetic model. For a new AEAD vector,
+compare the printed output with an independent software implementation
+before treating the result as verified.
 
-## Tổng hợp bằng Quartus
+## Synthesize with Quartus
 
-Mục tiêu FPGA: **Cyclone II EP2C35F672C6 (board DE2)**; project được tạo
-bằng **Quartus II 13.0 SP1**.
+Target FPGA: **Cyclone II EP2C35F672C6 (DE2 board)**. The projects were
+created with **Quartus II 13.0 SP1**.
 
-1. Mở `quartus/aead_fit_harness/aead_fit_harness.qpf`.
-2. Chọn **Processing → Start Compilation**.
-3. Trong **Compilation Report → Fitter → Resource Section → Fitter Resource
-   Utilization by Entity**, xem hàng `u_aead` để lấy diện tích **riêng lõi**.
-4. Trong **TimeQuest Timing Analyzer → Slow Model Fmax Summary**, xem Fmax
-   sau fit.
+1. Open `quartus/aead_fit_harness/aead_fit_harness.qpf`.
+2. Select **Processing → Start Compilation**.
+3. In **Compilation Report → Fitter → Resource Section → Fitter Resource
+   Utilization by Entity**, read the `u_aead` row for the **core-only area**.
+4. In **TimeQuest Timing Analyzer → Slow Model Fmax Summary**, read the
+   post-fit Fmax.
 
-Project `quartus/aead_core/aead_core.qpf` có top là lõi AEAD thuần, phù hợp
-để xem kết quả **Analysis & Synthesis**. Top này có quá nhiều cổng I/O để
-fit trực tiếp lên EP2C35. Project `aead_fit_harness` đưa dữ liệu vào/ra
-qua giao tiếp 32-bit để chạy Fitter và TimeQuest.
+The `quartus/aead_core/aead_core.qpf` project uses the pure AEAD core as its
+top level and is useful for **Analysis & Synthesis**. That top level has too
+many I/O bits to fit directly on the EP2C35. The `aead_fit_harness` project
+exposes a 32-bit load/read port so the Fitter and TimeQuest can run.
 
-Kết quả đo trên bản RTL hiện tại, với clock constraint **10 ns**, tối ưu
-`AREA` và fitter seed 2:
+Measurements for the current RTL with a **10 ns clock constraint**, `AREA`
+optimization, and Fitter seed 2:
 
-| Chỉ số sau Fitter | Giá trị |
+| Post-fit metric | Result |
 | --- | ---: |
-| Fmax slow model | **103,14 MHz** |
-| Logic elements của riêng `u_aead` | **5.751 LE** |
-| Logic elements của toàn project, gồm harness | **6.823 LE** |
-| Embedded multiplier 9-bit elements | **8** |
+| Slow-model Fmax | **103.14 MHz** |
+| Logic elements in `u_aead` only | **5,751 LE** |
+| Logic elements in the full project, including the harness | **6,823 LE** |
+| Embedded 9-bit multiplier elements | **8** |
 
-Đây là kết quả timing **giữa các thanh ghi** khi lõi nằm trong harness.
-SDC mới khai báo clock; chưa ràng buộc input/output delay hoặc gán chân DE2.
-Do đó kết quả này chưa xác nhận timing I/O khi chạy trên board và không phải
-kết quả PPA ASIC.
+The Fmax figure covers **register-to-register paths** with the core inside
+the harness. The SDC constrains the clock but does not specify input/output
+delays or DE2 pin assignments. It therefore does not establish board-level
+I/O timing, and it is not an ASIC PPA result.
 
-## Giao tiếp và giới hạn hiện tại
+## Interface and current limitations
 
-`aead_chacha20_poly1305` nhận key 256-bit, nonce 96-bit, AAD theo block
-16 byte và dữ liệu theo block tối đa 64 byte. Các lệnh `start_keygen`,
-`start_aad`, `start_encrypt`/`start_decrypt`, `start_finalize` là xung một
-chu kỳ; các tín hiệu `*_done` báo hoàn thành. Luồng thông thường là sinh
-khóa Poly1305 một lần, nạp AAD, xử lý các block dữ liệu, rồi nạp block độ
-dài và finalize để lấy MAC.
+`aead_chacha20_poly1305` accepts a 256-bit key, a 96-bit nonce, AAD in
+16-byte blocks, and payload blocks of up to 64 bytes. The `start_keygen`,
+`start_aad`, `start_encrypt`/`start_decrypt`, and `start_finalize` inputs are
+one-cycle command pulses. Completion is indicated by `keygen_done`,
+`aad_done`, `encrypt_done` (for both encrypt and decrypt), or `finalize_done`.
+A typical transaction generates the Poly1305 one-time key,
+processes AAD, processes payload blocks, and then processes the length
+block and finalizes the MAC.
 
-Trong chế độ giải mã, lõi tính plaintext và MAC nhưng **chưa có cổng nhận
-MAC đầu vào hoặc tín hiệu authentication pass/fail**. Khối điều khiển tích
-hợp phải so MAC và chỉ chấp nhận plaintext sau khi xác thực thành công.
-Repository này chưa có bus hay bộ xử lý; giao tiếp hệ thống sẽ được thiết kế
-ở giai đoạn tích hợp SoC.
+In decrypt mode, the core computes plaintext and a MAC, but it has **no
+received-tag input or authentication pass/fail output**. Integration logic
+must compare the received tag and release plaintext only after successful
+authentication. This repository does not include a bus or processor; those
+interfaces belong to a later SoC integration stage.
